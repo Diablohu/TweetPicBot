@@ -1,8 +1,7 @@
 const path = require('path')
 const puppeteer = require('puppeteer')
 
-const headless = false
-const proxy = 'socks5'
+const dirPics = path.resolve(__dirname, '../pics')
 
 const thumbnailUrlStartWith = `https://pbs.twimg.com/media/`
 const defaultViewport = {
@@ -13,16 +12,36 @@ const defaultViewport = {
 
 const selectorTweetDetail = `article[data-testid="tweetDetail"]`
 
-const parseTweet = async (user, tweetId) => {
+const removeOldPics = async () => {
+
+}
+
+/**
+ * 分析推文，截图，下载全尺寸图片
+ * @param {String} user 
+ * @param {String} tweetId 
+ * @param {Object} options 
+ * @param {Boolean} [options.headless] 
+ * @param {String|Boolean} [options.proxy] 
+ */
+const parseTweet = async (user, tweetId, options = {}) => {
+    await removeOldPics()
+
+    const {
+        headless = true,
+        proxy = false
+    } = options
+
     const url = `https://mobile.twitter.com/${user}/status/${tweetId}`
     // const url = `https://youtube.com`
     const pics = {
-        screenshot: path.resolve(__dirname, '../pics', `${user}-${tweetId}-shot.jpg`)
+        screenshot: path.resolve(dirPics, `${user}-${tweetId}-shot.jpg`)
     }
 
     const puppeteerOptions = {
         headless,
-        defaultViewport
+        defaultViewport,
+        timeout: 0
     }
     if (proxy === 'socks5') {
         if (!Array.isArray(puppeteerOptions.args))
@@ -33,6 +52,7 @@ const parseTweet = async (user, tweetId) => {
 
     const browser = await puppeteer.launch(puppeteerOptions)
     const page = await browser.newPage()
+    await page.setDefaultNavigationTimeout(0)
     await page.goto(url, {
         waitUntil: 'networkidle0'
     })
@@ -114,11 +134,5 @@ const parseTweet = async (user, tweetId) => {
 
     return pics
 }
-
-const run = async () => {
-    const result = await parseTweet('hiyashi_yaki', '1092065230220189697')
-    console.log(result)
-}
-run()
 
 module.exports = parseTweet
