@@ -42,3 +42,6 @@ jspm_packages
 node_modules/
 /logs/
 /dist/
+
+# project
+src/server/pics/
