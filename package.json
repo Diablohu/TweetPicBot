@@ -34,6 +34,7 @@
         "cssnano": "4.1.8",
         "jest": "24.0.0",
         "normalize.css": "8.0.1",
+        "redux-logger": "3.0.6",
         "svg-url-loader": "2.3.2"
     },
     "bugs": {

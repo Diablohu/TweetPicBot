@@ -15,7 +15,7 @@ const configBase = {
          * - 详见模板文件 `/src/index.ejs` 内的 `<%- content('critical.js') %>`
          */
         critical: [
-            path.resolve('../../src/critical.js')
+            path.resolve(__dirname, '../src/critical.js')
         ],
 
         /**
