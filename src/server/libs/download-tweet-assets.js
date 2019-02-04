@@ -17,8 +17,21 @@ const defaultViewport = {
 
 const selectorTweetDetail = `article[data-testid="tweetDetail"]:last-of-type`
 
-const removeOldPics = async () => {
-
+const removeOldPics = async (dir) => {
+    // const timeDelta = 5 * 60 * 1000
+    const timeDelta = 5 * 24 * 60 * 60 * 1000
+    const now = Date.now()
+    const files = (await fs.readdir(dir))
+        .map(filename => path.resolve(dir, filename))
+        .filter(file => {
+            const lstat = fs.lstatSync(file)
+            if (lstat.isDirectory())
+                return false
+            return (now - lstat.ctimeMs > timeDelta)
+        })
+    for (const file of files) {
+        await fs.remove(file)
+    }
 }
 
 /**
@@ -28,8 +41,7 @@ const removeOldPics = async () => {
  * @param {Boolean} [options.headless] 
  * @param {String|Boolean} [options.proxy] 
  */
-const parseTweet = async (url, options = {}) => {
-    await removeOldPics()
+const downloadTweetAssets = async (url, options = {}) => {
 
     const {
         headless = true,
@@ -37,6 +49,7 @@ const parseTweet = async (url, options = {}) => {
         dirPics = defaultPicDir
     } = options
     await fs.ensureDir(dirPics)
+    await removeOldPics(dirPics)
 
     // 分析推文URL
     const { userId, tweetId } = (() => {
@@ -218,4 +231,4 @@ const parseTweet = async (url, options = {}) => {
     return result
 }
 
-module.exports = parseTweet
+module.exports = downloadTweetAssets

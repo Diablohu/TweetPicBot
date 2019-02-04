@@ -1,4 +1,4 @@
-const parseTweet = require('./parse-tweet')
+const download = require('../src/server/libs/download-tweet-assets')
 
 const run = async () => {
     const options = {
@@ -15,7 +15,7 @@ const run = async () => {
     for (const url of urls) {
         console.log('')
         console.log(url)
-        const result = await parseTweet(url, options)
+        const result = await download(url, options)
             .catch(err => console.error(err))
         console.log(result)
         console.log('')
