@@ -1,6 +1,6 @@
 const run = async () => {
     const options = {
-        headless: false,
+        // headless: false,
         proxy: 'socks5'
     }
     console.log(await require('./parse-tweet.js')(

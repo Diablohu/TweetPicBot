@@ -1,10 +1,12 @@
+const fs = require('fs-extra')
 const path = require('path')
 const puppeteer = require('puppeteer')
 
-const dirPics = path.resolve(__dirname, '../pics')
+const { dist } = require('../../../koot.config')
 
 const twitterBaseUrl = `https://mobile.twitter.com/`
 const thumbnailUrlStartWith = `https://pbs.twimg.com/media/`
+const defaultPicDir = path.resolve(__dirname, '../../../', dist, 'public/tweet-pics')
 const defaultViewport = {
     width: 800,
     height: 800,
@@ -30,8 +32,10 @@ const parseTweet = async (url, options = {}) => {
 
     const {
         headless = true,
-        proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false
+        proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false,
+        dirPics = defaultPicDir
     } = options
+    await fs.ensureDir(dirPics)
 
     // 分析推文URL
     const { userId, tweetId } = (() => {
@@ -130,6 +134,10 @@ const parseTweet = async (url, options = {}) => {
 
     // 截图
     const rect = await page.evaluate(({ selectorTweetDetail }) => {
+        // 重置滚动条
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+        // 获取位置
         const { top, left, height, width } = document.querySelector(selectorTweetDetail)
             .getBoundingClientRect()
         return { top, left, height, width }
