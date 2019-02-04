@@ -12,11 +12,11 @@ const App = extend({
     )
 )
 
-const Nav = (props) => (
+const Nav = ({ routeParams, ...props }) => (
     <nav {...props}></nav>
 )
 
-const Main = (props) => (
+const Main = ({ routeParams, ...props }) => (
     <main {...props} />
 )
 

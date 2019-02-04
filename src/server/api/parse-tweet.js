@@ -1,6 +1,8 @@
 const fs = require('fs-extra')
 const path = require('path')
 const puppeteer = require('puppeteer')
+const glob = require('glob-promise')
+const download = require('download')
 
 const { dist } = require('../../../koot.config')
 
@@ -13,7 +15,7 @@ const defaultViewport = {
     deviceScaleFactor: 1
 }
 
-const selectorTweetDetail = `article[data-testid="tweetDetail"]`
+const selectorTweetDetail = `article[data-testid="tweetDetail"]:last-of-type`
 
 const removeOldPics = async () => {
 
@@ -21,8 +23,7 @@ const removeOldPics = async () => {
 
 /**
  * 分析推文，截图，下载全尺寸图片
- * @param {String} user 
- * @param {String} tweetId 
+ * @param {String} url 
  * @param {Object} options 
  * @param {Boolean} [options.headless] 
  * @param {String|Boolean} [options.proxy] 
@@ -53,11 +54,18 @@ const parseTweet = async (url, options = {}) => {
         }
     })()
 
+    // 检查是否已下载
+    const resultFilename = `${userId}-${tweetId}.json`
+    const resultPathname = path.resolve(dirPics, resultFilename)
+    if (fs.existsSync(resultPathname))
+        return await fs.readJSON(resultPathname)
+
     // 设定基础变量
     const tweetUrl = `https://mobile.twitter.com/${userId}/status/${tweetId}`
     // const url = `https://youtube.com`
-    const pics = {
-        screenshot: path.resolve(dirPics, `${userId}-${tweetId}-shot.jpg`)
+    const result = {
+        screenshot: `${userId}-${tweetId}.jpg`,
+        assets: []
     }
     const puppeteerOptions = {
         headless,
@@ -130,39 +138,84 @@ const parseTweet = async (url, options = {}) => {
     }
 
     // 下载全图
-    // await Promise.all(thumbnails.map(url => page.waitForRequest(url)))
+    {
+        const assets = thumbnails
+            .map(thumbnail => {
+                const url = new URL(thumbnail)
+                // /media/xxxxxxx?format=jpg&name=small
+                const matches = /^\/media\/([a-zA-Z0-9_-]+)$/.exec(url.pathname)
+                if (!Array.isArray(matches) || matches.length < 2)
+                    return undefined
+                return {
+                    filename: matches[1],
+                    format: url.searchParams.format || 'jpg'
+                }
+            })
+            .filter(obj => typeof obj === 'object')
+        await Promise.all(assets.map(({ filename, format }, index) =>
+            new Promise(async (resolve, reject) => {
+                const downloadUrl = `${thumbnailUrlStartWith}${filename}.${format}:orig`
+                const destFilename = `${userId}-${tweetId}-${filename}.${format}`
+                const destPathname = path.resolve(dirPics, destFilename)
+                result.assets[index] = {
+                    url: downloadUrl,
+                    file: false
+                }
+                await download(
+                    downloadUrl,
+                    dirPics,
+                    {
+                        filename: destFilename,
+                        proxy: proxy === 'socks5' ? 'socks5://127.0.0.1:1080' : undefined
+                    }
+                )
+                if (fs.existsSync(destPathname)) {
+                    result.assets[index].file = destFilename
+                }
+                resolve()
+            })
+        ))
+    }
 
     // 截图
-    const rect = await page.evaluate(({ selectorTweetDetail }) => {
-        // 重置滚动条
-        document.documentElement.scrollTop = 0
-        document.body.scrollTop = 0
-        // 获取位置
-        const { top, left, height, width } = document.querySelector(selectorTweetDetail)
-            .getBoundingClientRect()
-        return { top, left, height, width }
-    }, { selectorTweetDetail })
-    await page.setViewport({
-        width: parseInt(rect.width),
-        height: parseInt(rect.height) + parseInt(rect.top),
-        deviceScaleFactor: 1
-    })
-    await page.screenshot({
-        path: pics.screenshot,
-        type: 'jpeg',
-        quality: 60,
-        clip: {
-            x: 0,
-            y: rect.top,
-            width: rect.width,
-            height: rect.top + rect.height
-        }
-    })
+    {
+        const rect = await page.evaluate(({ selectorTweetDetail }) => {
+            const elTweet = document.querySelector(selectorTweetDetail)
+            // 获取位置
+            const { top, left, height, width } = document.querySelector(selectorTweetDetail)
+                .getBoundingClientRect()
+
+            // 重置滚动条
+            document.documentElement.scrollTop = 0
+            document.body.scrollTop = top
+
+            return { top, left, height, width }
+        }, { selectorTweetDetail })
+        await page.setViewport({
+            width: parseInt(rect.width),
+            height: parseInt(rect.height),
+            deviceScaleFactor: 1
+        })
+        await page.screenshot({
+            path: path.resolve(dirPics, result.screenshot),
+            type: 'jpeg',
+            quality: 60,
+            clip: {
+                x: 0,
+                y: 0,
+                width: rect.width,
+                height: rect.height
+            }
+        })
+    }
 
     // 关闭
     await browser.close()
 
-    return pics
+    // 创建 flag 文件
+    await fs.writeJSON(resultPathname, result)
+
+    return result
 }
 
 module.exports = parseTweet
