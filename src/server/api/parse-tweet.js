@@ -3,6 +3,7 @@ const puppeteer = require('puppeteer')
 
 const dirPics = path.resolve(__dirname, '../pics')
 
+const twitterBaseUrl = `https://mobile.twitter.com/`
 const thumbnailUrlStartWith = `https://pbs.twimg.com/media/`
 const defaultViewport = {
     width: 800,
@@ -24,20 +25,36 @@ const removeOldPics = async () => {
  * @param {Boolean} [options.headless] 
  * @param {String|Boolean} [options.proxy] 
  */
-const parseTweet = async (user, tweetId, options = {}) => {
+const parseTweet = async (url, options = {}) => {
     await removeOldPics()
 
     const {
         headless = true,
-        proxy = false
+        proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false
     } = options
 
-    const url = `https://mobile.twitter.com/${user}/status/${tweetId}`
+    // 分析推文URL
+    const { userId, tweetId } = (() => {
+        const fullUrl = /(?:^[a-z][a-z0-9+.-]*:|\/\/)/i.test(url)
+            ? new URL(url)
+            : new URL(url, twitterBaseUrl)
+        // https://twitter.com/pockyfactory/status/1092296548346519552
+        const matches = /\/([a-zA-Z0-9-_]+)\/status\/([0-9]+)/.exec(fullUrl.pathname)
+        if (!Array.isArray(matches) || matches.length < 2) {
+            throw new Error('invalid url input')
+        }
+        return {
+            userId: matches[1],
+            tweetId: matches[2]
+        }
+    })()
+
+    // 设定基础变量
+    const tweetUrl = `https://mobile.twitter.com/${userId}/status/${tweetId}`
     // const url = `https://youtube.com`
     const pics = {
-        screenshot: path.resolve(dirPics, `${user}-${tweetId}-shot.jpg`)
+        screenshot: path.resolve(dirPics, `${userId}-${tweetId}-shot.jpg`)
     }
-
     const puppeteerOptions = {
         headless,
         defaultViewport,
@@ -50,10 +67,11 @@ const parseTweet = async (user, tweetId, options = {}) => {
         // puppeteerOptions.executablePath = path.resolve('C:/Program Files (x86)/Google/Chrome/Application/chrome.exe')
     }
 
+    // 启动 Puppeteer
     const browser = await puppeteer.launch(puppeteerOptions)
     const page = await browser.newPage()
     await page.setDefaultNavigationTimeout(0)
-    await page.goto(url, {
+    await page.goto(tweetUrl, {
         waitUntil: 'networkidle0'
     })
 
@@ -71,6 +89,9 @@ const parseTweet = async (user, tweetId, options = {}) => {
         document.querySelector(`${selectorTweetDetail} > div:last-child`).remove()
         document.querySelector('header[role="banner"]').style.display = 'none'
     }, { selectorTweetDetail })
+        .catch(err => {
+            throw new Error('tweet not found or invalid tweet page')
+        })
 
     // 检查是否包含敏感内容开关
     // 如果有，打开开关
@@ -130,6 +151,7 @@ const parseTweet = async (user, tweetId, options = {}) => {
         }
     })
 
+    // 关闭
     await browser.close()
 
     return pics

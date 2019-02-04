@@ -4,13 +4,16 @@ const run = async () => {
         proxy: 'socks5'
     }
     console.log(await require('./parse-tweet.js')(
-        'ogatatei', '1091511648244850689', options
+        'https://twitter.com/pockyfactory/status/1092296548346519552', options
     ))
     console.log(await require('./parse-tweet.js')(
-        'yochris72', '1092055434234458112', options
+        'amiamihobbynews/status/1092286251846094849', options
     ))
     console.log(await require('./parse-tweet.js')(
-        'Diablohu', '1090874382841307136', options
+        'twitter.com/kamosu_kamosuzo/status/1092022920258322432', options
+    ))
+    console.log(await require('./parse-tweet.js')(
+        'mobile.twitter.com/YoshiHon/status/1092266835091705856', options
     ))
 }
 run()
