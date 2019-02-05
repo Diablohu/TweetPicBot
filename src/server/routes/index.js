@@ -23,7 +23,7 @@ router.get('/api/tweet-assets', async (ctx) => {
 
     let error
     const result = await downloadTweetAssets(ctx.query.url,{
-        proxy: __DEV__ ? 'socks5' : undefined
+        proxy: __DEV__ ? 'socks5://127.0.0.1:1080' : undefined
     })
         .catch(err => error = err)
 

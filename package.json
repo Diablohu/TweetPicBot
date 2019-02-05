@@ -26,19 +26,19 @@
     "dependencies": {
         "axios": "0.18.0",
         "classnames": "2.2.6",
-        "koot": "0.8.0-beta.5",
-        "puppeteer": "1.11.0"
+        "koot": "0.8.0-beta.6",
+        "puppeteer": "1.11.0",
+        "tweet-shot": "0.1.0"
     },
     "devDependencies": {
         "autoprefixer": "9.4.7",
+        "babel-eslint": "10.0.1",
         "cssnano": "4.1.8",
-        "download": "7.1.0",
         "eslint": "5.13.0",
         "jest": "24.0.0",
         "normalize.css": "8.0.1",
         "redux-logger": "3.0.6",
-        "svg-url-loader": "2.3.2",
-        "terser": "3.14.1"
+        "svg-url-loader": "2.3.2"
     },
     "bugs": {
         "url": "https://github.com/Diablohu/TweetPicBot/issues"

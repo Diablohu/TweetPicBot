@@ -45,7 +45,7 @@ const downloadTweetAssets = async (url, options = {}) => {
 
     const {
         headless = true,
-        proxy = false,
+        proxy = undefined,
         // proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false,
         dirPics = defaultPicDir
     } = options
@@ -86,11 +86,10 @@ const downloadTweetAssets = async (url, options = {}) => {
         defaultViewport,
         timeout: 0
     }
-    if (proxy === 'socks5') {
+    if (proxy) {
         if (!Array.isArray(puppeteerOptions.args))
             puppeteerOptions.args = []
-        puppeteerOptions.args.push(`--proxy-server=socks5://127.0.0.1:1080`)
-        // puppeteerOptions.executablePath = path.resolve('C:/Program Files (x86)/Google/Chrome/Application/chrome.exe')
+        puppeteerOptions.args.push(`--proxy-server=${proxy}`)
     }
 
     // 启动 Puppeteer
@@ -183,7 +182,7 @@ const downloadTweetAssets = async (url, options = {}) => {
         await Promise.all(assets.map(({ filename, format }, index) =>
             new Promise(async (resolve, reject) => {
                 const downloadUrl = `${thumbnailUrlStartWith}${filename}.${format}:orig`
-                const destFilename = `${userId}-${tweetId}-${filename}.${format}`
+                const destFilename = `${userId}-${tweetId}-${index}-${filename}.${format}`
                 const destPathname = path.resolve(dirPics, destFilename)
                 result.assets[index] = {
                     url: downloadUrl,
@@ -194,7 +193,7 @@ const downloadTweetAssets = async (url, options = {}) => {
                     dirPics,
                     {
                         filename: destFilename,
-                        proxy: proxy === 'socks5' ? 'socks5://127.0.0.1:1080' : undefined
+                        proxy
                     }
                 )
                     .catch(err =>
