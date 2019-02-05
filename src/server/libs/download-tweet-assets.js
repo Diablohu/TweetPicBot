@@ -43,6 +43,11 @@ const removeOldPics = async (dir) => {
  */
 const downloadTweetAssets = async (url, options = {}) => {
 
+    const reject = async (err) => {
+        await browser.close()
+        throw err
+    }
+
     const {
         headless = true,
         proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false,
@@ -52,14 +57,14 @@ const downloadTweetAssets = async (url, options = {}) => {
     await removeOldPics(dirPics)
 
     // 分析推文URL
-    const { userId, tweetId } = (() => {
+    const { userId, tweetId } = await (async () => {
         const fullUrl = /(?:^[a-z][a-z0-9+.-]*:|\/\/)/i.test(url)
             ? new URL(url)
             : new URL(url, twitterBaseUrl)
         // https://twitter.com/pockyfactory/status/1092296548346519552
         const matches = /\/([a-zA-Z0-9-_]+)\/status\/([0-9]+)/.exec(fullUrl.pathname)
         if (!Array.isArray(matches) || matches.length < 2) {
-            throw new Error('invalid url input')
+            await reject(new Error('invalid url input'))
         }
         return {
             userId: matches[1],
@@ -114,8 +119,8 @@ const downloadTweetAssets = async (url, options = {}) => {
         document.querySelector(`${selectorTweetDetail} > div:last-child`).remove()
         document.querySelector('header[role="banner"]').style.display = 'none'
     }, { selectorTweetDetail })
-        .catch(err => {
-            throw new Error('tweet not found or invalid tweet page')
+        .catch(async err => {
+            await reject(new Error('tweet not found or invalid tweet page'))
         })
 
     // 检查是否包含敏感内容开关
@@ -161,7 +166,8 @@ const downloadTweetAssets = async (url, options = {}) => {
                     return undefined
                 return {
                     filename: matches[1],
-                    format: url.searchParams.format || 'jpg'
+                    format: url.searchParams.format || url.searchParams.get('format') || 'jpg',
+                    thumbnail
                 }
             })
             .filter(obj => typeof obj === 'object')
@@ -182,12 +188,15 @@ const downloadTweetAssets = async (url, options = {}) => {
                         proxy: proxy === 'socks5' ? 'socks5://127.0.0.1:1080' : undefined
                     }
                 )
+                    .catch(err =>
+                        reject(`download fail - thumbnail: ${assets[index].thumbnail} | download: ${downloadUrl}`)
+                    )
                 if (fs.existsSync(destPathname)) {
                     result.assets[index].file = destFilename
                 }
                 resolve()
             })
-        ))
+        )).catch(async err => await reject(err))
     }
 
     // 截图

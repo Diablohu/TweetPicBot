@@ -9,7 +9,8 @@ const run = async () => {
         'https://twitter.com/pockyfactory/status/1092296548346519552',
         'amiamihobbynews/status/1092286251846094849',
         'twitter.com/kamosu_kamosuzo/status/1092022920258322432',
-        'mobile.twitter.com/YoshiHon/status/1092266835091705856'
+        'mobile.twitter.com/YoshiHon/status/1092266835091705856',
+        'https://twitter.com/rint_rnt/status/1092121977442029568'
     ]
 
     for (const url of urls) {
