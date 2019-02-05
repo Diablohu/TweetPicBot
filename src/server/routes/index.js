@@ -22,7 +22,9 @@ router.get('/api/tweet-assets', async (ctx) => {
     }
 
     let error
-    const result = await downloadTweetAssets(ctx.query.url)
+    const result = await downloadTweetAssets(ctx.query.url,{
+        proxy: __DEV__ ? 'socks5' : undefined
+    })
         .catch(err => error = err)
 
     if (error) {

@@ -43,14 +43,10 @@ const removeOldPics = async (dir) => {
  */
 const downloadTweetAssets = async (url, options = {}) => {
 
-    const reject = async (err) => {
-        await browser.close()
-        throw err
-    }
-
     const {
         headless = true,
-        proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false,
+        proxy = false,
+        // proxy = process.env.WEBPACK_BUILD_ENV === 'dev' ? 'socks5' : false,
         dirPics = defaultPicDir
     } = options
     await fs.ensureDir(dirPics)
@@ -64,7 +60,7 @@ const downloadTweetAssets = async (url, options = {}) => {
         // https://twitter.com/pockyfactory/status/1092296548346519552
         const matches = /\/([a-zA-Z0-9-_]+)\/status\/([0-9]+)/.exec(fullUrl.pathname)
         if (!Array.isArray(matches) || matches.length < 2) {
-            await reject(new Error('invalid url input'))
+            throw new Error('invalid url input')
         }
         return {
             userId: matches[1],
@@ -82,7 +78,7 @@ const downloadTweetAssets = async (url, options = {}) => {
     const tweetUrl = `https://mobile.twitter.com/${userId}/status/${tweetId}`
     // const url = `https://youtube.com`
     const result = {
-        screenshot: `${userId}-${tweetId}.jpg`,
+        screenshot: `${userId}-${tweetId}_.jpg`,
         assets: []
     }
     const puppeteerOptions = {
@@ -105,6 +101,11 @@ const downloadTweetAssets = async (url, options = {}) => {
         waitUntil: 'networkidle0'
     })
 
+    const reject = async (err) => {
+        await browser.close()
+        throw err
+    }
+
     // 阻止 service-worker
     await page._client.send('ServiceWorker.enable')
     await page._client.send('ServiceWorker.stopAllWorkers')
@@ -123,27 +124,35 @@ const downloadTweetAssets = async (url, options = {}) => {
             await reject(new Error('tweet not found or invalid tweet page'))
         })
 
+    // 模拟按下 ESC，尝试关闭可能出现的弹出框
+    await page.keyboard.press('Escape')
+
     // 检查是否包含敏感内容开关
     // 如果有，打开开关
     {
-        const $linkSafety = await page.$('a[href="/settings/safety"]')
-        if ($linkSafety && typeof $linkSafety === 'object') {
-            await page.evaluate(() => {
-                const buttonParent = document.querySelector('a[href="/settings/safety"]')
-                    .parentNode
-                    .parentNode
-                    .parentNode
-                const button = buttonParent.querySelectorAll('div[role="button"]')
-                if (button.length) {
-                    button[0].click()
-                }
-            })
+        const $linksSafety = await page.$$('a[href="/settings/safety"]')
+        for (const $linkSafety of $linksSafety) {
+            if ($linkSafety && typeof $linkSafety === 'object') {
+                await page.evaluate(() => {
+                    const buttonParent = document.querySelector('a[href="/settings/safety"]')
+                        .parentNode
+                        .parentNode
+                        .parentNode
+                    const button = buttonParent.querySelectorAll('div[role="button"]')
+                    if (button.length) {
+                        button[0].click()
+                    }
+                })
+            }
         }
     }
 
     // 获取缩略图
     const selectorThumbnails = `${selectorTweetDetail} img[src^="${thumbnailUrlStartWith}"]`
     await page.waitForSelector(selectorThumbnails)
+        .catch(err => {
+            reject(new Error('tweet page parsing failed: no thumbnail found'))
+        })
     const thumbnails = await page.evaluate(({ selectorThumbnails }) => {
         const thumbnails = document.querySelectorAll(selectorThumbnails)
         if (!thumbnails || !thumbnails.length)
@@ -198,6 +207,23 @@ const downloadTweetAssets = async (url, options = {}) => {
             })
         )).catch(async err => await reject(err))
     }
+
+    // 等待缩略图
+    await page.evaluate(async ({ selectorThumbnails }) => {
+        const thumbnails = document.querySelectorAll(selectorThumbnails)
+        if (!thumbnails || !thumbnails.length)
+            return true
+        await Promise.all(Array.from(thumbnails).map(el =>
+            new Promise(resolve => {
+                const check = () => {
+                    if (el.complete)
+                        return resolve()
+                    setTimeout(check, 10)
+                }
+                check()
+            })
+        ))
+    }, { selectorThumbnails })
 
     // 截图
     {
