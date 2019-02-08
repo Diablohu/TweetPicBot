@@ -1,6 +1,5 @@
 const fs = require('fs-extra')
 const path = require('path')
-const glob = require('glob-promise')
 const tweetShot = require('tweet-shot')
 
 const { dist } = require('../../../koot.config')
