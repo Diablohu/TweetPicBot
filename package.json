@@ -27,7 +27,7 @@
         "axios": "0.21.1",
         "classnames": "2.2.6",
         "koot": "0.8.0-beta.6",
-        "puppeteer": "1.11.0",
+        "puppeteer": "1.13.0",
         "tweet-shot": "0.1.0"
     },
     "devDependencies": {
